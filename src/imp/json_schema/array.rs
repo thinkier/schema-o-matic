@@ -9,10 +9,19 @@ impl JsonSchemaArray {
             .map(|v| JsonSchema::from_value(v))
             .collect::<Vec<_>>();
 
+        let items_schema = if items.len() > 0 {
+            let mut schema = items[0].clone();
+            for i in 1..items.len() {
+                schema = schema.union(&items[i]);
+            }
+            Some(Box::new(schema))
+        } else {
+            None
+        };
 
         JsonSchemaArray {
             default: Some(array.to_owned()),
-            items: Some(Box::new(items.pop().unwrap())),
+            items: items_schema,
             ..Default::default()
         }
     }
