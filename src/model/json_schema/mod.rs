@@ -17,3 +17,10 @@ pub enum JsonSchema {
     Array(JsonSchemaArray),
     Null(JsonSchemaScalar),
 }
+
+pub enum FundamentalType {
+    Null,
+    Scalar,
+    Vector,
+    Object,
+}

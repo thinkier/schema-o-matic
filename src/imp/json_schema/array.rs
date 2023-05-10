@@ -5,7 +5,7 @@ use crate::model::json_schema::JsonSchema;
 
 impl JsonSchemaArray {
     pub fn from_array(array: &Vec<Value>) -> Self {
-        let mut items = array.iter()
+        let items = array.iter()
             .map(|v| JsonSchema::from_value(v))
             .collect::<Vec<_>>();
 

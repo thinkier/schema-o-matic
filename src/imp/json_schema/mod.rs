@@ -1,6 +1,6 @@
 use serde_json::Value;
 use crate::model::json_schema::array::JsonSchemaArray;
-use crate::model::json_schema::JsonSchema;
+use crate::model::json_schema::{FundamentalType, JsonSchema};
 use crate::model::json_schema::object::JsonSchemaObject;
 use crate::model::json_schema::scalar::JsonSchemaScalar;
 
@@ -17,29 +17,14 @@ pub trait ClearDefault {
 }
 
 impl JsonSchema {
-    pub fn is_scalar(&self) -> bool {
+    pub fn get_type(&self) -> FundamentalType {
         match self {
-            JsonSchema::String(_) => true,
-            JsonSchema::Boolean(_) => true,
-            JsonSchema::Number(_) => true,
-            JsonSchema::Null(_) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_array(&self) -> bool {
-        if let JsonSchema::Array(_) = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_object(&self) -> bool {
-        if let JsonSchema::Object(_) = self {
-            true
-        } else {
-            false
+            JsonSchema::String(_) |
+            JsonSchema::Boolean(_) |
+            JsonSchema::Number(_) => FundamentalType::Scalar,
+            JsonSchema::Null(_) => FundamentalType::Null,
+            JsonSchema::Array(_) => FundamentalType::Vector,
+            JsonSchema::Object(_) => FundamentalType::Object,
         }
     }
 
@@ -91,36 +76,34 @@ impl JsonSchema {
 
 impl Union<JsonSchema> for JsonSchema {
     fn union(&self, rhs: &JsonSchema) -> Self {
-        if self.is_scalar() && rhs.is_scalar() {
-            let scalar = self.as_scalar().union(rhs.as_scalar());
+        let types = (self.get_type(), rhs.get_type());
 
-            return match (self, rhs) {
-                (JsonSchema::String(_), _) => JsonSchema::String(scalar),
-                (_, JsonSchema::String(_)) => JsonSchema::String(scalar),
-                (JsonSchema::Number(_), JsonSchema::Number(_)) => JsonSchema::Number(scalar),
-                (JsonSchema::Boolean(_), JsonSchema::Boolean(_)) => JsonSchema::Boolean(scalar),
-                (JsonSchema::Null(_), alt) => {
-                    match alt {
-                        JsonSchema::Boolean(_) => JsonSchema::Boolean(scalar),
-                        JsonSchema::Number(_) => JsonSchema::Number(scalar),
-                        JsonSchema::Null(_) => JsonSchema::Null(scalar),
-                        JsonSchema::String(_) => unreachable!("all string is already covered in parent case"),
-                        _ => unreachable!("no other categories are present under scalar")
-                    }
+        match types {
+            (FundamentalType::Vector, FundamentalType::Vector) => {
+                let array = self.as_array().union(rhs.as_array());
+
+                JsonSchema::Array(array)
+            }
+            (FundamentalType::Object, FundamentalType::Object) => {
+                let object = self.as_object().union(rhs.as_object());
+
+                JsonSchema::Object(object)
+            }
+            (FundamentalType::Scalar, FundamentalType::Scalar) => {
+                let scalar = self.as_scalar().union(rhs.as_scalar());
+
+                match (self, rhs) {
+                    (JsonSchema::String(_), _) |
+                    (_, JsonSchema::String(_)) => JsonSchema::String(scalar),
+                    (JsonSchema::Number(_), JsonSchema::Number(_)) => JsonSchema::Number(scalar),
+                    (JsonSchema::Boolean(_), JsonSchema::Boolean(_)) => JsonSchema::Boolean(scalar),
+                    _ => panic!("cannot combine lhs with rhs as scalar: {:?}, {:?}", self, rhs)
                 }
-                _ => panic!("cannot combine lhs with rhs as scalar: {:?}, {:?}", self, rhs)
-            };
-        } else if self.is_array() && rhs.is_array() {
-            let array = self.as_array().union(rhs.as_array());
-
-            return JsonSchema::Array(array);
-        } else if self.is_object() && rhs.is_object() {
-            let object = self.as_object().union(rhs.as_object());
-
-            return JsonSchema::Object(object);
+            }
+            (FundamentalType::Null, _) => self.clone(),
+            (_, FundamentalType::Null) => rhs.clone(),
+            _ => panic!("cannot combine lhs with rhs: {:?}, {:?}", self, rhs)
         }
-
-        panic!("cannot combine lhs with rhs: {:?}, {:?}", self, rhs)
     }
 }
 
