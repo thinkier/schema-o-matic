@@ -1,6 +1,7 @@
 use serde_json::Value;
-use crate::model::json_schema::array::JsonSchemaArray;
+
 use crate::model::json_schema::{FundamentalType, JsonSchema};
+use crate::model::json_schema::array::JsonSchemaArray;
 use crate::model::json_schema::object::JsonSchemaObject;
 use crate::model::json_schema::scalar::JsonSchemaScalar;
 
@@ -100,8 +101,8 @@ impl Union<JsonSchema> for JsonSchema {
                     _ => panic!("cannot combine lhs with rhs as scalar: {:?}, {:?}", self, rhs)
                 }
             }
-            (FundamentalType::Null, _) => self.clone(),
-            (_, FundamentalType::Null) => rhs.clone(),
+            (FundamentalType::Null, _) => rhs.clone(),
+            (_, FundamentalType::Null) => self.clone(),
             _ => panic!("cannot combine lhs with rhs: {:?}, {:?}", self, rhs)
         }
     }
